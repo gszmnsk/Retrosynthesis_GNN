@@ -1,6 +1,6 @@
 import pandas as pd
 # from torch.utils.data import DataLoader, Dataset
-from Retrosynthesis.RetrosynthesisDataset import RetrosynthesisDataset
+from RetrosynthesisDataset import RetrosynthesisDataset
 from torch_geometric.loader import DataLoader
 retrosynthesis_data = pd.read_csv('//Retrosynthesis/dataset/processed_uspto_full/processed_upsto_full.csv')
 

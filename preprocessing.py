@@ -20,7 +20,7 @@ import torch
 #
 #
 # data.to_csv(save_path)
-data = pd.read_csv('//Retrosynthesis/dataset/processed_uspto_full/processed_upsto_full.csv')
+data = pd.read_csv('./dataset/processed_uspto_full/processed_upsto_full.csv')
 product_smiles = data['product']
 reactant_smiles = data['reactant']
 
@@ -48,6 +48,7 @@ if __name__== '__main__':
     # print(data.head())
     # print(len(product_smiles))
     print(graph)
+    print(mol.GetNumAtoms())
     print(create_edge_labels(mol))
     # print(graph)
 

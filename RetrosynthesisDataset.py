@@ -1,5 +1,8 @@
 from torch.utils.data import Dataset, DataLoader
-from dgllife.utils import BaseAtomFeaturizer, ConcatFeaturizer, atom_type_one_hot, SMILESToBigraph, CanonicalBondFeaturizer
+import os
+os.environ["DGL_USE_GRAPHBOLT"] = "0"
+# import dgl
+from dgllife.utils import BaseAtomFeaturizer, ConcatFeaturizer, atom_type_one_hot, atom_degree_one_hot, atom_hybridization_one_hot, SMILESToBigraph, CanonicalBondFeaturizer
 import torch
 from torch_geometric.data import Data
 from rdkit import Chem
@@ -17,16 +20,20 @@ class RetrosynthesisDataset(Dataset):
 
         reactant_graph = self.smiles_to_graph(reactants_smiles)
         product_graph = self.smiles_to_graph(product_smiles)
-        edge_labels, reaction_centers = self.label_bonds(reactants_smiles, product_smiles)
-        edge_labels_tensor = torch.tensor(list(edge_labels.values()), dtype=torch.long)
-        # edge_label_tensor = torch.tensor([edge_labels.get(bond, 0) for bond in reactant_bonds], dtype=torch.long)
+        reactant_bonds = self.get_bonds(reactants_smiles)
+        product_bonds = self.get_bonds(product_smiles)
+        product_bond_labels, reactant_bond_labels, reaction_centers = self.label_bonds(reactant_bonds, product_bonds)
+        # edge_labels_tensor = torch.tensor(list(edge_labels.values()), dtype=torch.long)
+        reactant_edge_label_tensor = torch.tensor(reactant_bond_labels, dtype=torch.long)
+        product_edge_label_tensor = torch.tensor(product_bond_labels, dtype=torch.long)
+        # reactant_edge_label_tensor = torch.tensor([edge_labels.get(bond, 0) for bond in reactant_bonds], dtype=torch.long)
         # product_edge_label_tensor = torch.tensor([edge_labels.get(bond, 0) for bond in product_bonds], dtype=torch.long)
         # edge_label_list = [edge_labels.get(bond, 0) for bond in bond_tuples]
         # Add edge labels to reactant and product graphs
-        # reactant_graph.edata["edge_label"] = reactant_edge_label_tensor
-        # product_graph.edata["edge_label"]= product_edge_label_tensor
+        reactant_graph.edata["y"] = self.expand_bond_labels_for_dgl(reactant_bond_labels, reactant_graph.num_edges())
+        product_graph.edata["y"]= self.expand_bond_labels_for_dgl(product_bond_labels, product_graph.num_edges())
         # reactant_graph.edata["edge_label"] = torch.tensor(edge_labels, dtype=torch.long)
-        return reactant_graph, product_graph, edge_labels_tensor, reaction_centers
+        return reactant_graph, product_graph
 
     def get_bonds(self, smiles):
         mol = Chem.MolFromSmiles(smiles)
@@ -39,13 +46,12 @@ class RetrosynthesisDataset(Dataset):
             bond_tuples.add((j,i)) # because our graoh is undirected
         return bond_tuples
 
-    def label_bonds(self, reactants_smiles, product_smiles):
-        edge_labels = edge_labels = {
+    def label_bonds(self, reactant_bonds, product_bonds):
+        edge_labels = {
                     (0, 1): 1,  # Broken bond
                     (1, 2): 2,  # Formed bond
                     }
-        reactant_bonds = self.get_bonds(reactants_smiles)
-        product_bonds = self.get_bonds(product_smiles)
+
         # reactant_bonds = {tuple(sorted(bond)) for bond in reactant_bonds}
         # product_bonds = {tuple(sorted(bond)) for bond in product_bonds}
         bond_labels = {}
@@ -54,21 +60,28 @@ class RetrosynthesisDataset(Dataset):
 
         for bond in all_bonds:
             if bond in reactant_bonds and bond not in product_bonds:
-                bond_labels[bond] = 1
+                bond_labels[bond] = 1 # broken
                 reaction_centers.add(bond)
             elif bond not in reactant_bonds and bond in product_bonds:
-                bond_labels[bond] = 2
+                bond_labels[bond] = 2 # formed
                 reaction_centers.add(bond)
             else:
                 bond_labels[bond] = 0
 
-        return bond_labels, reaction_centers
+        product_bond_labels = [bond_labels.get(tuple(sorted(bond)), 0) for bond in product_bonds]
+        reactant_bond_labels = [bond_labels.get(tuple(sorted(bond)), 0) for bond in reactant_bonds]
+        return product_bond_labels, reactant_bond_labels, reaction_centers
+
+    def expand_bond_labels_for_dgl(self, bond_labels, num_edges):
+        """Duplicate each bond label to match DGL's bidirectional edges (one per direction)."""
+        expanded_labels = [label for label in bond_labels for _ in range(2)]
+        return torch.tensor(expanded_labels[:num_edges])
 
     def smiles_to_graph(self, smiles):
 
         atom_type_featurizer = BaseAtomFeaturizer(
             featurizer_funcs={
-                "h": ConcatFeaturizer([atom_type_one_hot]),
+                "h": ConcatFeaturizer([atom_type_one_hot, atom_degree_one_hot, atom_hybridization_one_hot]),
             }
         )
         bond_featurizer = CanonicalBondFeaturizer(
@@ -133,13 +146,14 @@ if __name__ == "__main__":
     dataset = RetrosynthesisDataset(data)
 
     # Get first reaction pair (product, reactants)
-    reactant_graph, product_graph, edge_labels, reaction_centers = dataset[1]
+    reactant_graph, product_graph, reaction_centers = dataset[1]
     print(data)
     # Print graph details
     # print(product_graph)
     print(reactant_graph)
     print(product_graph)
-    print(edge_labels)
+    print(reactant_graph.edata['y'])
+    print(product_graph.edata['y'])
     print(reaction_centers)
     # from rdkit import Chem
     # from rdkit.Chem import Draw

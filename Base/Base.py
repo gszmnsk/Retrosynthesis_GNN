@@ -149,20 +149,20 @@ class TrainerBase:
         self.logger.close()
 
 
-class ReadoutBase(nn.Module):
-    def __init__(self, hidden_size: int):
-        super().__init__()
-        self.hidden_size = hidden_size
-
-    @abstractmethod
-    def forward(self,
-                node_embeddings: torch.Tensor,
-                graph: dgl.DGLGraph) -> torch.Tensor:
-        """
-        Attributes:
-            node_embeddings: node embeddings in a sparse format, i.e. [total_num_nodes, hidden_size]
-            graph: a DGLGraph that contains the graph structure
-        Returns:
-            graph_embeddings: graph embeddings of shape.[batch_size, hidden_size]
-        """
-        raise NotImplementedError()
+# class ReadoutBase(nn.Module):
+#     def __init__(self, hidden_size: int):
+#         super().__init__()
+#         self.hidden_size = hidden_size
+#
+#     @abstractmethod
+#     def forward(self,
+#                 node_embeddings: torch.Tensor,
+#                 graph: dgl.DGLGraph) -> torch.Tensor:
+#         """
+#         Attributes:
+#             node_embeddings: node embeddings in a sparse format, i.e. [total_num_nodes, hidden_size]
+#             graph: a DGLGraph that contains the graph structure
+#         Returns:
+#             graph_embeddings: graph embeddings of shape.[batch_size, hidden_size]
+#         """
+#         raise NotImplementedError()
