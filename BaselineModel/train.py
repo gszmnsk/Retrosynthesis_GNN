@@ -1,20 +1,29 @@
 from collections import Counter
-
 import torch
 from dgl.dataloading import GraphDataLoader
 import dgl
 from torch.utils.data import WeightedRandomSampler
-
-from RetrosynthesisDataset import RetrosynthesisDataset
-from edgeClassification import EdgeClassificationGNN
 import pandas as pd
 import wandb
-from sklearn.metrics import classification_report, accuracy_score, f1_score, precision_score, recall_score
-
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from BaselineModel.RetrosynthesisDataset import RetrosynthesisDataset
+from BaselineModel.edgeClassification import EdgeClassificationGNN
 
 num_nodes = 100  # Number of nodes
-num_features = 16  # Number of features per node
-num_classes = 2  # Number of output classes for classification
+# num_features = 16  # Number of features per node
+num_features=59  # Updated number of features per node based on dataset
+num_classes = 3  # Number of output classes for classification
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# Initialize model
+model = EdgeClassificationGNN(in_feats=num_features, out_feats=num_classes, hidden_feats=16)
+model = model.to(device)
+print(f"Using device: {device}")
+# Load dataset
+df = pd.read_csv('../dataset/processed_uspto_full/processed_upsto_full.csv')
+df = df[["reactant", "product"]]
+data = df.to_dict(orient='list')
+
+dataset = RetrosynthesisDataset(data=data)
 
 def retrosynthesis_collate_fn(batch):
     """
@@ -38,13 +47,16 @@ def retrosynthesis_collate_fn(batch):
     # Return the batch of reactant and product graphs
     return reactant_batch, product_batch
 
-df = pd.read_csv('./dataset/processed_uspto_full/processed_upsto_full.csv')
-df = df[["reactant", "product"]]
-data = df.to_dict(orient='list')
 
-dataset = RetrosynthesisDataset(data=data)
+# Class distribution is: 70/42/16 for 0/1/2
+# # Class counts:
+# counts = torch.tensor([70, 42, 16], dtype=torch.float)
+#
+# # Compute normalized weights (inverse frequency)
+# weights = 1.0 / counts
+# weights = weights / weights.sum() * len(counts)
 
-# Counting classes for oversampling
+# Counting classes for oversampling, because of imbalanced dataset
 class_counts = Counter()
 
 for i in range(len(dataset)):
@@ -78,29 +90,9 @@ dataloader = GraphDataLoader(
     collate_fn=retrosynthesis_collate_fn
 )
 
-
-num_nodes = 100  # Number of nodes
-# num_features = 16  # Number of features per node
-num_features=59  # Updated number of features per node based on dataset
-num_classes = 3  # Number of output classes for classification
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-# Initialize model
-model = EdgeClassificationGNN(in_feats=num_features, out_feats=num_classes, hidden_feats=16)
-model = model.to(device)
-print(f"Using device: {device}")
-
-# Class distribution is: 70/42/16 for 0/1/2
-# # Class counts:
-# counts = torch.tensor([70, 42, 16], dtype=torch.float)
-#
-# # Compute normalized weights (inverse frequency)
-# weights = 1.0 / counts
-# weights = weights / weights.sum() * len(counts)
-
 # Loss function and optimizer
 criterion = torch.nn.CrossEntropyLoss(weight=sample_weights.to(device))
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
 
 def train(model, dataloader, optimizer):
     model.train()
@@ -165,12 +157,6 @@ wandb.init(
         "device": device
     }
 )
-
-# # Training loop for 10 epochs
-# for epoch in range(30):
-#     loss = train(model, dataloader, optimizer)
-#     evaluate(model, dataloader, device)
-#     print(f"Epoch {epoch + 1}: Loss = {loss:.4f}")
 
 # Training loop for 30 epochs with wandb logging
 for epoch in range(5000):

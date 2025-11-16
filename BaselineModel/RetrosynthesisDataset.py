@@ -1,10 +1,8 @@
 from torch.utils.data import Dataset, DataLoader
 import os
 os.environ["DGL_USE_GRAPHBOLT"] = "0"
-# import dgl
 from dgllife.utils import BaseAtomFeaturizer, ConcatFeaturizer, atom_type_one_hot, atom_degree_one_hot, atom_hybridization_one_hot, SMILESToBigraph, CanonicalBondFeaturizer
 import torch
-from torch_geometric.data import Data
 from rdkit import Chem
 
 class RetrosynthesisDataset(Dataset):
@@ -94,70 +92,25 @@ class RetrosynthesisDataset(Dataset):
         )
         graph = smiles_to_graph_simple(smiles)
 
-        # bond_tuples = []
-        # mol = Chem.MolFromSmiles(smiles)
-        # for bond in mol.GetBonds():
-        #     i, j = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
-        #     bond_type = bond.GetBondType()
-        #     bond_tuples.append((i,j))
-        #     bond_tuples.append((j,i)) # because our graoh is undirected
-        #
-
         return graph
-    from rdkit import Chem
-    from torch_geometric.data import Data
-    import torch
-    #
-    # def smiles_to_graph(self, smiles):
-    #     mol = Chem.MolFromSmiles(smiles)
-    #     if mol is None:
-    #         raise ValueError(f"Invalid SMILES: {smiles}")
-    #
-    #     # Node features: Atom-level features
-    #     x = torch.tensor([atom.GetAtomicNum() for atom in mol.GetAtoms()], dtype=torch.float).view(-1, 1)
-    #
-    #     # Edge index and features
-    #     edge_index = []
-    #     edge_attr = []
-    #     for bond in mol.GetBonds():
-    #         start, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
-    #         edge_index.append((start, end))
-    #         edge_index.append((end, start))  # Bi-directional
-    #         edge_attr.append(bond.GetBondTypeAsDouble())
-    #         edge_attr.append(bond.GetBondTypeAsDouble())  # Bi-directional
-    #
-    #     edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
-    #     edge_attr = torch.tensor(edge_attr, dtype=torch.float).view(-1, 1)
-    #
-    #     return Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
 
-    # Example usage
-    # product_smiles = "O=C(O)c1ccccc1"
-    # product_graph = smiles_to_graph(product_smiles)
-    # print(product_graph)
 if __name__ == "__main__":
+    # Testing
     # Example data (SMILES strings for reactants & products)
     data = {
         "reactant": ["CCO", "CCN"],
         "product": ["CO", "CN"]
     }
-
     # Create dataset
     dataset = RetrosynthesisDataset(data)
-
     # Get first reaction pair (product, reactants)
     reactant_graph, product_graph, reaction_centers = dataset[1]
     print(data)
-    # Print graph details
-    # print(product_graph)
-    print(reactant_graph)
-    print(product_graph)
     print(reactant_graph.edata['y'])
     print(product_graph.edata['y'])
     print(reaction_centers)
     # from rdkit import Chem
     # from rdkit.Chem import Draw
-    #
     # # Create the molecule from SMILES
     # smiles = "CCN"
     # mol = Chem.MolFromSmiles(smiles)
