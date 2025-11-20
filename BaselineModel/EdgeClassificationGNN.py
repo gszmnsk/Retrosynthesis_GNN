@@ -24,6 +24,7 @@ class EdgeClassificationGNN(nn.Module):
         graph = graph.to(self.device)
         h = graph.ndata['h']
         # print(g.ndata['feat'].shape)# [N, in_feats]
+        # Message passing and node feature updates
         h = self.conv1(graph, h)          # [N, num_heads, hidden_dim]
         h = h.flatten(1)              # [N, num_heads*hidden_dim]
         h = torch.relu(h)

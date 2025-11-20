@@ -4,7 +4,7 @@ This repository contains code and resources for retrosynthesis, the process of p
 It is a work in progress, by no means finished or polished.
 README contains some notes to the author for future reference.
 Baseline model is a graph neural network (GNN) trained to predict reaction types for given reactants and products.
-Further idea is to apply RL to plan multi-step synthesis routes.
+Further idea is to apply graph representation learning along with RL to plan multi-step synthesis routes.
 
 # Dataset
 
